@@ -8,8 +8,15 @@
 
 import Foundation
 
+struct FeedItem: Equatable {
+    let id: UUID
+    let description: String?
+    let location: String?
+    let imageURL: URL
+}
+
 protocol HTTPClient {
-    func get(from url: URL, completion: @escaping (Error) -> Void)
+    func get(from url: URL, completion: @escaping (Result<(Data, HTTPURLResponse), Error>) -> Void)
 }
 
 struct FeedLoader {
@@ -18,11 +25,28 @@ struct FeedLoader {
 
     enum Error: Swift.Error {
         case noConnectivity
+        case invalidData
     }
 
-    func load(completion: @escaping (Error) -> Void = { _ in }) {
-        client.get(from: requestURL) { _ in
-            completion(.noConnectivity)
+    enum Result: Equatable {
+        case success([FeedItem])
+        case failure(Error)
+    }
+
+    func load(completion: @escaping (Result) -> Void = { _ in }) {
+        client.get(from: requestURL) { (result) in
+
+            switch result {
+            case .success(let data, _):
+                if let _ = try? JSONSerialization.jsonObject(with: data) {
+                    completion(.success([]))
+                } else {
+                    completion(.failure(.invalidData))
+                }
+
+            case .failure(_):
+                completion(.failure(.noConnectivity))
+            }
         }
     }
 }
