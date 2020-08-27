@@ -47,6 +47,22 @@ class ExampleTests: XCTestCase {
         client.complete(with: error, at: 0)
         XCTAssertEqual(captureError, .noConnectivity)
     }
+
+    func test_load_deliversErrorOnNon200HTTPResponse() {
+    }
+
+    func test_load_deliversInvalidDataOn200HTTPResponseWithInvalidJSON() {
+    }
+
+    func test_load_deliversEmptyItemsOn200HTTPResponseWithEmptyJSONList() {
+    }
+
+    func test_load_deliversItemsOn200HTTPResponseWithJSONItems() {
+    }
+
+    func test_load_doesNotDeliverResultAfterSUTDeallocated() {
+    }
+
 }
 
 private extension ExampleTests {
