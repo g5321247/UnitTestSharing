@@ -48,7 +48,9 @@ class ExampleTests: XCTestCase {
 
         samples.enumerated().forEach { (index, statusCode) in
             expect(sut: sut, onCompletionResult: .failure(.invalidData), when: {
-                client.complete(statusCode: statusCode, at: index)
+                let invalidJSON = Data("invalidJSON".utf8)
+
+                client.complete(statusCode: statusCode, data: invalidJSON,at: index)
             })
         }
     }
@@ -67,28 +69,70 @@ class ExampleTests: XCTestCase {
         let (sut, client) = makeSUT()
 
         expect(sut: sut, onCompletionResult: .success([]), when: {
-            let emptyItemList = Data("{\"items\": []}".utf8)
+            let emptyItemList = makeJSON([])
 
             client.complete(statusCode: 200, data: emptyItemList)
         })
     }
 
     func test_load_deliversItemsOn200HTTPResponseWithJSONItems() {
+        let (sut, client) = makeSUT()
+        let item1 = makeFeedItem(
+            id: UUID(),
+            description: nil,
+            location: nil,
+            imageURL: URL(string: "https://any-URL.com")!
+        )
+
+        let item2 = makeFeedItem(
+            id: UUID(),
+            description: "a description",
+            location: "a location",
+            imageURL: URL(string: "https://any-URL.com")!
+        )
+
+        expect(sut: sut, onCompletionResult: .success([item1.model, item2.model]), when: {
+            let json = makeJSON([item1.json, item2.json])
+            client.complete(statusCode: 200, data: json)
+        })
+
     }
 
     func test_load_doesNotDeliverResultAfterSUTDeallocated() {
+        let client = HTTPClientSpy()
+        let url = URL(string: "https://www.youtube.com/")!
+        var sut: FeedLoader? = FeedLoader(
+            requestURL: url, client: client)
+
+        var captureResults: [FeedLoader.Result] = []
+        sut?.load { result in
+            captureResults.append(result)
+        }
+
+        sut = nil
+        client.complete(statusCode: 200, data: makeJSON([]))
+
+        XCTAssert(captureResults.isEmpty)
     }
 
 }
 
 private extension ExampleTests {
-
     func makeSUT(url: URL = URL(string: "https://www.youtube.com/")!) -> (sut: FeedLoader, client: HTTPClientSpy) {
         let client = HTTPClientSpy()
         let sut = FeedLoader(
             requestURL: url, client: client)
 
+        traceMemoryLeak(instance: sut)
+        traceMemoryLeak(instance: client)
+
         return (sut: sut, client: client)
+    }
+
+    func traceMemoryLeak(instance: AnyObject, file: StaticString = #file, line: UInt = #line) {
+        addTeardownBlock { [weak instance] in
+            XCTAssertNil(instance, file: file, line: line)
+        }
     }
 
     func expect(sut: FeedLoader, onCompletionResult expectedResult: FeedLoader.Result, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
@@ -119,7 +163,7 @@ private extension ExampleTests {
             messages[index].completion(.failure(error))
         }
 
-        func complete(statusCode: Int, data: Data = Data(), at index: Int = 0) {
+        func complete(statusCode: Int, data: Data, at index: Int = 0) {
             let response = HTTPURLResponse(
                 url: requestURLs[index],
                 statusCode: statusCode,
@@ -130,5 +174,38 @@ private extension ExampleTests {
             messages[index].completion(.success((data, response)))
         }
 
+    }
+
+    func makeFeedItem(id: UUID, description: String? = nil, location: String? = nil, imageURL: URL) -> (model: FeedItem, json: [String: Any]) {
+        let item = FeedItem(
+            id: id,
+            description: description,
+            location: location,
+            imageURL: imageURL
+        )
+
+        let itemJSON = [
+            "id": item.id.uuidString,
+            "description": item.description,
+            "location": item.location,
+            "image": item.imageURL.absoluteString,
+        ].compactMapValues { $0 }
+
+        return (item, itemJSON)
+    }
+
+    func makeJSON(_ items: [[String: Any]]) -> Data {
+        let items = [
+            "items": items
+        ]
+
+        let json = try! JSONSerialization.data(withJSONObject: items)
+        return json
+    }
+}
+
+extension Data {
+    func toString() -> String {
+        return String(decoding: self, as: UTF8.self)
     }
 }
