@@ -101,10 +101,10 @@ class ExampleTests: XCTestCase {
     func test_load_doesNotDeliverResultAfterSUTDeallocated() {
         let client = HTTPClientSpy()
         let url = URL(string: "https://www.youtube.com/")!
-        var sut: FeedLoader? = FeedLoader(
+        var sut: RemoteFeedLoader? = RemoteFeedLoader(
             requestURL: url, client: client)
 
-        var captureResults: [FeedLoader.Result] = []
+        var captureResults: [RemoteFeedLoader.Result] = []
         sut?.load { result in
             captureResults.append(result)
         }
@@ -118,9 +118,9 @@ class ExampleTests: XCTestCase {
 }
 
 private extension ExampleTests {
-    func makeSUT(url: URL = URL(string: "https://www.youtube.com/")!) -> (sut: FeedLoader, client: HTTPClientSpy) {
+    func makeSUT(url: URL = URL(string: "https://www.youtube.com/")!) -> (sut: RemoteFeedLoader, client: HTTPClientSpy) {
         let client = HTTPClientSpy()
-        let sut = FeedLoader(
+        let sut = RemoteFeedLoader(
             requestURL: url, client: client)
 
         traceMemoryLeak(instance: sut)
@@ -135,9 +135,9 @@ private extension ExampleTests {
         }
     }
 
-    func expect(sut: FeedLoader, onCompletionResult expectedResult: FeedLoader.Result, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
+    func expect(sut: RemoteFeedLoader, onCompletionResult expectedResult: RemoteFeedLoader.Result, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
 
-        var captureResults: [FeedLoader.Result] = []
+        var captureResults: [RemoteFeedLoader.Result] = []
         sut.load { result in
             captureResults.append(result)
         }
